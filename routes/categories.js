@@ -13,31 +13,42 @@ router.get("/", function (req, res, next) {
 
 router.post("/", (req, res, next) => {
   user = req.body;
+  checkUser(user);
+  user.token = md5(user.email + user.password);
+  res.json(user);
 });
 
-var checkUser = (req, res, next) => {
+var checkUser = (person) => {
   var found = false;
-  //in the case no user is found from query
-  if (user == null) {
-    req.query.user = false;
-    next();
-  } else {
-    //checking user credentials through actual user data
-    userData.forEach((element) => {
-      if (md5(user.email + user.password) == element.key) {
-        found = true;
-        req.query.user = true;
-        next();
-      }
-    });
-    //in case username and password do not match any user accounts
-    if (!found) {
-      req.query.user = "invalid";
-      next();
+  var val;
+  userData.forEach((element) => {
+    if (person.email == element.email && person.password == element.password) {
+      found = true;
+      element.token = md5(person.email + person.password);
+      val = true;
     }
-  }
+  });
 };
 
-router.get("/:categoryId", checkUser, newsController.getNews);
+var checkToken = (req, res, next) => {
+  var found = false;
+  if (req.params.token == undefined) {
+    req.query.user = "invalid";
+  } else {
+    userData.forEach((element) => {
+      if (req.params.token == element.token) {
+        found = true;
+        req.query.user = true;
+      }
+    });
+    if (!found) {
+      req.query.user = false;
+    }
+  }
+  next();
+};
+
+router.get("/:categoryId/:token", checkToken, newsController.getNews);
+router.get("/:categoryId/", checkToken, newsController.getNews);
 
 module.exports = router;
